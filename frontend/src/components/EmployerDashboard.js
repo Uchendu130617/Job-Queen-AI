@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Briefcase, Plus, BarChart, Settings, LogOut, Sparkles, Users, FileText, TrendingUp } from "lucide-react";
+import { Briefcase, Plus, BarChart, Settings, LogOut, Sparkles, Users, FileText, TrendingUp, Clock } from "lucide-react";
 import { useAuth } from "../App";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
