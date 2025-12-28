@@ -129,6 +129,21 @@ export const EmployerDashboard = () => {
           <p className="text-[#64748B]">Welcome back, {user?.full_name}</p>
         </div>
 
+        {/* Account Pending Approval Banner */}
+        {!user?.is_approved && (
+          <Card className="border-[#F59E0B] bg-[#FFFBEB] mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#92400E] flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Account Pending Approval
+              </CardTitle>
+              <CardDescription className="text-[#92400E]">
+                Your employer account is awaiting admin approval. You won't be able to post jobs until your account is approved. This usually takes 1-2 business days.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
         {/* Stats */}
         <div data-testid="stats-grid" className="grid md:grid-cols-4 gap-6 mb-8">
           <Card className="border-[#E2E8F0]">
