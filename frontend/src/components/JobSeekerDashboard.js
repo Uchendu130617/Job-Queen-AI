@@ -275,6 +275,45 @@ export const JobSeekerDashboard = () => {
           </Card>
         </div>
 
+        {/* AI Career Tools */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-6 w-6 text-[#8B5CF6]" />
+            <h2 className="text-2xl font-bold" style={{ fontFamily: 'Manrope, sans-serif' }}>AI Career Tools</h2>
+            {user.is_premium && <Badge className="bg-gradient-to-r from-indigo-500 to-violet-500 text-white">Premium</Badge>}
+          </div>
+          
+          <div data-testid="ai-career-tools" className="grid md:grid-cols-2 gap-6">
+            <Card 
+              className="border-[#8B5CF6] hover:border-[#6D28D9] transition-colors cursor-pointer bg-gradient-to-br from-indigo-50 to-violet-50"
+              onClick={() => setShowTailorDialog(true)}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Wand2 className="h-10 w-10 text-[#8B5CF6] mb-2" />
+                  <Badge className="bg-[#8B5CF6] text-white">15-25 Credits</Badge>
+                </div>
+                <CardTitle className="text-lg">Tailor My CV for a Job</CardTitle>
+                <CardDescription>Optimize your CV to match a specific job posting. AI rewrites your experience to highlight relevant skills.</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="border-[#3B82F6] hover:border-[#2563EB] transition-colors cursor-pointer bg-gradient-to-br from-blue-50 to-cyan-50"
+              onClick={() => setShowMessageDialog(true)}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Mail className="h-10 w-10 text-[#3B82F6] mb-2" />
+                  <Badge className="bg-[#3B82F6] text-white">5 Credits</Badge>
+                </div>
+                <CardTitle className="text-lg">Message Recruiter (AI)</CardTitle>
+                <CardDescription>Generate personalized outreach messages for LinkedIn, email, and follow-ups.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+
         {/* Stats */}
         <div data-testid="stats-grid" className="grid md:grid-cols-3 gap-6 mb-8">
           <Card className="border-[#E2E8F0]">
