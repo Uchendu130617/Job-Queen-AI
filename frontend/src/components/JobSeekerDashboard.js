@@ -69,7 +69,12 @@ export const JobSeekerDashboard = () => {
     }
   };
 
-  const handleParseResume = async () => {
+  const handleFileUpload = async () => {
+    if (!resumeFile) {
+      toast.error("Please select a file");
+      return;
+    }
+
     if (user.ai_credits <= 0) {
       setShowUpgradeDialog(true);
       return;
@@ -77,16 +82,68 @@ export const JobSeekerDashboard = () => {
 
     setIsParsingResume(true);
     try {
-      await axios.post(`${API}/ai/parse-resume`, null, {
-        params: { resume_text: resumeText },
-        headers: { Authorization: `Bearer ${token}` },
+      const formData = new FormData();
+      formData.append("file", resumeFile);
+
+      const response = await axios.post(`${API}/resumes/upload`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
+
+      setParsedResume(response.data);
+      toast.success("Resume uploaded and parsed successfully!");
+      setShowResumeDialog(false);
+      fetchUser();
+      fetchStats();
+      setResumeFile(null);
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to upload resume";
+      console.error("Resume upload error:", error.response?.data);
+      toast.error(errorMsg);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
+
+  const handleTextParse = async () => {
+    if (!resumeText || resumeText.trim().length < 100) {
+      toast.error("Please paste at least 100 characters of resume text");
+      return;
+    }
+
+    if (user.ai_credits <= 0) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
+    setIsParsingResume(true);
+    try {
+      // Create a text file from the pasted content
+      const blob = new Blob([resumeText], { type: "text/plain" });
+      const file = new File([blob], "pasted-resume.txt", { type: "text/plain" });
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post(`${API}/resumes/upload`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setParsedResume(response.data);
       toast.success("Resume parsed successfully!");
       setShowResumeDialog(false);
       fetchUser();
       fetchStats();
+      setResumeText("");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to parse resume");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to parse resume";
+      console.error("Resume parse error:", error.response?.data);
+      toast.error(errorMsg);
     } finally {
       setIsParsingResume(false);
     }
