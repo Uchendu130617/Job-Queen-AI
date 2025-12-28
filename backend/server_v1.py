@@ -492,3 +492,487 @@ async def delete_job(job_id: str, current_user: User = Depends(get_current_user)
 
 
 # ========== CONTINUE IN NEXT MESSAGE DUE TO LENGTH ==========
+
+# ========== APPLICATION ROUTES ==========
+
+@api_router.post("/applications", response_model=Application)
+async def create_application(app_data: ApplicationCreate, current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers can apply")
+    
+    existing = await db.applications.find_one({"job_id": app_data.job_id, "candidate_id": current_user.id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Already applied to this job")
+    
+    job = await db.jobs.find_one({"id": app_data.job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    app_dict = app_data.model_dump()
+    app_dict['candidate_id'] = current_user.id
+    app_dict['candidate_name'] = current_user.full_name
+    app_dict['candidate_email'] = current_user.email
+    
+    app_obj = Application(**app_dict)
+    doc = app_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.applications.insert_one(doc)
+    await db.jobs.update_one({"id": app_data.job_id}, {"$inc": {"application_count": 1}})
+    
+    return app_obj
+
+
+@api_router.get("/applications/my-applications", response_model=List[Application])
+async def get_my_applications(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers can view their applications")
+    
+    apps = await db.applications.find({"candidate_id": current_user.id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    for app in apps:
+        if isinstance(app['created_at'], str):
+            app['created_at'] = datetime.fromisoformat(app['created_at'])
+    
+    return apps
+
+
+@api_router.get("/applications/job/{job_id}", response_model=List[Application])
+async def get_job_applications(job_id: str, current_user: User = Depends(get_current_user)):
+    job = await db.jobs.find_one({"id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job['employer_id'] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    apps = await db.applications.find({"job_id": job_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    for app in apps:
+        if isinstance(app['created_at'], str):
+            app['created_at'] = datetime.fromisoformat(app['created_at'])
+    
+    return apps
+
+
+@api_router.put("/applications/{app_id}/status")
+async def update_application_status(app_id: str, new_status: str, current_user: User = Depends(get_current_user)):
+    app = await db.applications.find_one({"id": app_id})
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    job = await db.jobs.find_one({"id": app['job_id']})
+    if job['employer_id'] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.applications.update_one({"id": app_id}, {"$set": {"status": new_status}})
+    return {"message": "Status updated successfully"}
+
+
+# ========== AI ROUTES (WITH EXPLAINABILITY) ==========
+
+@api_router.get("/ai/match-jobs", response_model=List[MatchedJob])
+async def match_jobs(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers can get matched jobs")
+    
+    if current_user.ai_credits <= 0:
+        raise HTTPException(status_code=403, detail="No AI credits remaining")
+    
+    resume = await db.resumes.find_one({"user_id": current_user.id}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Please upload your resume first")
+    
+    jobs = await db.jobs.find({"status": "active"}, {"_id": 0}).limit(10).to_list(10)
+    
+    if not jobs:
+        return []
+    
+    try:
+        ai_service = get_ai_service()
+        matches = await ai_service.match_jobs(resume, jobs, current_user.id)
+        
+        matched_jobs = []
+        for match in matches:
+            if match['overall_score'] >= 50:
+                job_idx = match['job_index']
+                if job_idx < len(jobs):
+                    job_data = jobs[job_idx]
+                    if isinstance(job_data['created_at'], str):
+                        job_data['created_at'] = datetime.fromisoformat(job_data['created_at'])
+                    
+                    matched_jobs.append(MatchedJob(
+                        job=Job(**job_data),
+                        match_score=match['overall_score'],
+                        match_breakdown={
+                            "skills_score": match.get('skills_score', 0),
+                            "experience_score": match.get('experience_score', 0),
+                            "location_score": match.get('location_score', 0)
+                        },
+                        match_reason=match['reason']
+                    ))
+        
+        matched_jobs.sort(key=lambda x: x.match_score, reverse=True)
+        
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -1}})
+        
+        return matched_jobs[:5]
+    except Exception as e:
+        logging.error(f"Job matching error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to match jobs")
+
+
+@api_router.post("/ai/screen-candidate/{app_id}", response_model=ScreeningResult)
+async def screen_candidate(app_id: str, current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.EMPLOYER:
+        raise HTTPException(status_code=403, detail="Only employers can screen candidates")
+    
+    if current_user.ai_credits <= 0:
+        raise HTTPException(status_code=403, detail="No AI credits remaining")
+    
+    app = await db.applications.find_one({"id": app_id}, {"_id": 0})
+    if not app:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    job = await db.jobs.find_one({"id": app['job_id']}, {"_id": 0})
+    if job['employer_id'] != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    resume = await db.resumes.find_one({"user_id": app['candidate_id']}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Candidate resume not found")
+    
+    try:
+        ai_service = get_ai_service()
+        screening = await ai_service.screen_candidate(job, resume, app_id)
+        
+        await db.applications.update_one(
+            {"id": app_id},
+            {"$set": {
+                "ai_match_score": screening['overall_score'],
+                "screening_result": screening
+            }}
+        )
+        
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -1}})
+        
+        return ScreeningResult(**screening)
+    except Exception as e:
+        logging.error(f"Screening error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to screen candidate")
+
+
+@api_router.get("/ai/interview-prep/{job_id}")
+async def get_interview_prep(job_id: str, current_user: User = Depends(get_current_user)):
+    """Get interview preparation (Premium feature)"""
+    if not current_user.is_premium:
+        raise HTTPException(status_code=403, detail="Premium feature - upgrade required")
+    
+    if current_user.ai_credits <= 0:
+        raise HTTPException(status_code=403, detail="No AI credits remaining")
+    
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    try:
+        ai_service = get_ai_service()
+        prep = await ai_service.generate_interview_prep(job)
+        
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -1}})
+        
+        return prep
+    except Exception as e:
+        logging.error(f"Interview prep error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate interview prep")
+
+
+# ========== PREMIUM FEATURES ==========
+
+@api_router.post("/premium/auto-apply")
+async def auto_apply_to_matches(current_user: User = Depends(get_current_user)):
+    """Auto-apply to matched jobs (Premium feature)"""
+    if not current_user.is_premium:
+        raise HTTPException(status_code=403, detail="Premium feature - upgrade required")
+    
+    if current_user.ai_credits < 2:
+        raise HTTPException(status_code=403, detail="Insufficient AI credits")
+    
+    # Get matched jobs
+    resume = await db.resumes.find_one({"user_id": current_user.id}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Please upload your resume first")
+    
+    jobs = await db.jobs.find({"status": "active"}, {"_id": 0}).limit(10).to_list(10)
+    
+    try:
+        ai_service = get_ai_service()
+        matches = await ai_service.match_jobs(resume, jobs, current_user.id)
+        
+        applied_count = 0
+        for match in matches:
+            if match['overall_score'] >= 75:  # Only auto-apply to high matches
+                job_idx = match['job_index']
+                if job_idx < len(jobs):
+                    job = jobs[job_idx]
+                    
+                    # Check if already applied
+                    existing = await db.applications.find_one({
+                        "job_id": job['id'],
+                        "candidate_id": current_user.id
+                    })
+                    
+                    if not existing:
+                        app_obj = Application(
+                            job_id=job['id'],
+                            candidate_id=current_user.id,
+                            candidate_name=current_user.full_name,
+                            candidate_email=current_user.email,
+                            cover_letter="Auto-applied based on AI match",
+                            ai_match_score=match['overall_score']
+                        )
+                        
+                        doc = app_obj.model_dump()
+                        doc['created_at'] = doc['created_at'].isoformat()
+                        
+                        await db.applications.insert_one(doc)
+                        await db.jobs.update_one({"id": job['id']}, {"$inc": {"application_count": 1}})
+                        applied_count += 1
+        
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -2}})
+        
+        return {"message": f"Auto-applied to {applied_count} matching jobs"}
+    except Exception as e:
+        logging.error(f"Auto-apply error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to auto-apply")
+
+
+# ========== STATS ROUTES ==========
+
+@api_router.get("/stats/employer")
+async def get_employer_stats(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.EMPLOYER:
+        raise HTTPException(status_code=403, detail="Only employers can view stats")
+    
+    jobs_count = await db.jobs.count_documents({"employer_id": current_user.id})
+    active_jobs = await db.jobs.count_documents({"employer_id": current_user.id, "status": "active"})
+    
+    all_jobs = await db.jobs.find({"employer_id": current_user.id}, {"_id": 0, "id": 1}).to_list(100)
+    job_ids = [j['id'] for j in all_jobs]
+    
+    total_applications = await db.applications.count_documents({"job_id": {"$in": job_ids}})
+    
+    return {
+        "total_jobs": jobs_count,
+        "active_jobs": active_jobs,
+        "total_applications": total_applications,
+        "ai_credits": current_user.ai_credits,
+        "subscription_tier": current_user.subscription_tier,
+        "is_premium": current_user.is_premium
+    }
+
+
+@api_router.get("/stats/jobseeker")
+async def get_jobseeker_stats(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers can view stats")
+    
+    applications_count = await db.applications.count_documents({"candidate_id": current_user.id})
+    has_resume = await db.resumes.find_one({"user_id": current_user.id}) is not None
+    
+    return {
+        "total_applications": applications_count,
+        "has_resume": has_resume,
+        "ai_credits": current_user.ai_credits,
+        "subscription_tier": current_user.subscription_tier,
+        "is_premium": current_user.is_premium
+    }
+
+
+# ========== ADMIN ROUTES ==========
+
+@api_router.get("/admin/users")
+async def get_all_users(
+    skip: int = 0,
+    limit: int = 50,
+    role: Optional[str] = None,
+    current_admin: User = Depends(get_current_admin)
+):
+    """Get all users (Admin only)"""
+    query = {}
+    if role:
+        query['role'] = role
+    
+    users = await db.users.find(query, {"_id": 0, "password_hash": 0}).skip(skip).limit(limit).to_list(limit)
+    
+    for user in users:
+        if isinstance(user.get('created_at'), str):
+            user['created_at'] = datetime.fromisoformat(user['created_at'])
+    
+    return users
+
+
+@api_router.put("/admin/users/{user_id}/approve")
+async def approve_user(user_id: str, current_admin: User = Depends(get_current_admin)):
+    """Approve employer account"""
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_approved": True}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User approved"}
+
+
+@api_router.put("/admin/users/{user_id}/suspend")
+async def suspend_user(user_id: str, current_admin: User = Depends(get_current_admin)):
+    """Suspend user account"""
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_suspended": True}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User suspended"}
+
+
+@api_router.get("/admin/jobs/pending")
+async def get_pending_jobs(current_admin: User = Depends(get_current_admin)):
+    """Get jobs pending approval"""
+    jobs = await db.jobs.find({"status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    for job in jobs:
+        if isinstance(job['created_at'], str):
+            job['created_at'] = datetime.fromisoformat(job['created_at'])
+    
+    return jobs
+
+
+@api_router.put("/admin/jobs/{job_id}/approve")
+async def approve_job(job_id: str, current_admin: User = Depends(get_current_admin)):
+    """Approve job posting"""
+    result = await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "active"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return {"message": "Job approved"}
+
+
+@api_router.put("/admin/jobs/{job_id}/reject")
+async def reject_job(job_id: str, reason: str, current_admin: User = Depends(get_current_admin)):
+    """Reject job posting"""
+    result = await db.jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "rejected", "rejection_reason": reason}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return {"message": "Job rejected"}
+
+
+@api_router.get("/admin/analytics")
+async def get_admin_analytics(current_admin: User = Depends(get_current_admin)):
+    """Get platform analytics"""
+    total_users = await db.users.count_documents({})
+    total_employers = await db.users.count_documents({"role": UserRole.EMPLOYER})
+    total_jobseekers = await db.users.count_documents({"role": UserRole.JOB_SEEKER})
+    premium_users = await db.users.count_documents({"is_premium": True})
+    
+    total_jobs = await db.jobs.count_documents({})
+    active_jobs = await db.jobs.count_documents({"status": "active"})
+    featured_jobs = await db.jobs.count_documents({"is_featured": True})
+    
+    total_applications = await db.applications.count_documents({})
+    
+    # Revenue calculation (simulated)
+    professional_count = await db.users.count_documents({"subscription_tier": "professional"})
+    enterprise_count = await db.users.count_documents({"subscription_tier": "enterprise"})
+    monthly_revenue = (professional_count * 49) + (enterprise_count * 199) + (featured_jobs * 99)
+    
+    # AI usage
+    users_with_credits = await db.users.find({}, {"_id": 0, "ai_credits": 1}).to_list(1000)
+    total_credits_used = sum([10 - user.get('ai_credits', 10) for user in users_with_credits if user.get('ai_credits', 10) < 10])
+    
+    return {
+        "users": {
+            "total": total_users,
+            "employers": total_employers,
+            "job_seekers": total_jobseekers,
+            "premium": premium_users
+        },
+        "jobs": {
+            "total": total_jobs,
+            "active": active_jobs,
+            "featured": featured_jobs
+        },
+        "applications": {
+            "total": total_applications
+        },
+        "revenue": {
+            "monthly_recurring": monthly_revenue,
+            "professional_subs": professional_count,
+            "enterprise_subs": enterprise_count,
+            "featured_jobs": featured_jobs
+        },
+        "ai_usage": {
+            "total_credits_consumed": total_credits_used
+        }
+    }
+
+
+# Include router
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
+
+
+# Create admin user on startup
+@app.on_event("startup")
+async def create_admin_user():
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@jobquick.ai')
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    
+    existing_admin = await db.users.find_one({"email": admin_email})
+    if not existing_admin:
+        admin_user = User(
+            email=admin_email,
+            role=UserRole.ADMIN,
+            full_name="Admin User",
+            subscription_tier="enterprise",
+            ai_credits=999999,
+            is_premium=True,
+            is_approved=True
+        )
+        
+        doc = admin_user.model_dump()
+        doc['password_hash'] = hash_password(admin_password)
+        doc['created_at'] = doc['created_at'].isoformat()
+        
+        await db.users.insert_one(doc)
+        logger.info(f"Admin user created: {admin_email}")
