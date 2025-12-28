@@ -19,6 +19,7 @@ const API = `${BACKEND_URL}/api`;
 
 export const JobSeekerDashboard = () => {
   const { user, logout, token, fetchUser } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [matchedJobs, setMatchedJobs] = useState([]);
