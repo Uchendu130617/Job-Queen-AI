@@ -629,6 +629,24 @@ export const JobSeekerDashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Tailor CV Dialog */}
+      <TailorCVDialog 
+        open={showTailorDialog}
+        onClose={() => setShowTailorDialog(false)}
+        user={user}
+        token={token}
+        fetchUser={fetchUser}
+      />
+
+      {/* Message Recruiter Dialog */}
+      <MessageRecruiterDialog
+        open={showMessageDialog}
+        onClose={() => setShowMessageDialog(false)}
+        user={user}
+        token={token}
+        fetchUser={fetchUser}
+      />
+
       {/* Upgrade Dialog */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <DialogContent data-testid="upgrade-dialog">
