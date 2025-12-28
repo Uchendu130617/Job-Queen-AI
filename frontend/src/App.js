@@ -437,6 +437,14 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/employer/dashboard"
             element={
               <ProtectedRoute requiredRole="employer">
