@@ -14,11 +14,20 @@ import bcrypt
 import jwt
 from ai_service import AIService, AIProvider
 from file_utils import extract_text_from_file
+from config import validate_environment, get_config, log_startup_info
 import json
 
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Validate environment on startup
+try:
+    validate_environment()
+    CONFIG = get_config()
+except Exception as e:
+    logging.error(f"Configuration error: {e}")
+    raise
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
