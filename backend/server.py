@@ -1026,6 +1026,225 @@ async def get_admin_analytics(current_admin: User = Depends(get_current_admin)):
     }
 
 
+# ========== JOB AGGREGATION & PREMIUM FEATURES (V1 EXTENSION) ==========
+
+@api_router.post("/admin/jobs/aggregate")
+async def trigger_aggregation(source: Optional[str] = None, current_admin: User = Depends(get_current_admin)):
+    """Manually trigger job aggregation"""
+    try:
+        result = await run_aggregation_job(db)
+        return result
+    except Exception as e:
+        logging.error(f"Aggregation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Aggregation failed")
+
+
+@api_router.get("/jobs/all")
+async def get_all_jobs_with_aggregated(
+    source: Optional[str] = None,
+    date_posted_days: Optional[int] = None,
+    location: Optional[str] = None,
+    employment_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    sort_by: str = "recent"
+):
+    """Get both internal and aggregated jobs"""
+    all_jobs = []
+    
+    # Internal jobs
+    internal_query = {"status": "active"}
+    if location:
+        internal_query["location"] = {"$regex": location, "$options": "i"}
+    if date_posted_days:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=date_posted_days)
+        internal_query["created_at"] = {"$gte": cutoff.isoformat()}
+    
+    internal = await db.jobs.find(internal_query, {"_id": 0}).to_list(50)
+    for job in internal:
+        if isinstance(job.get('created_at'), str):
+            job['created_at'] = datetime.fromisoformat(job['created_at'])
+        job['is_external'] = False
+        job['source'] = 'jobquick'
+        all_jobs.append(job)
+    
+    # Aggregated jobs
+    service = JobAggregationService(db)
+    aggregated = await service.get_aggregated_jobs(
+        source=source if source != 'jobquick' else None,
+        date_posted_days=date_posted_days,
+        location=location,
+        employment_type=employment_type,
+        skip=0,
+        limit=50
+    )
+    
+    for job in aggregated:
+        if isinstance(job.get('date_posted'), str):
+            job['date_posted'] = datetime.fromisoformat(job['date_posted'])
+        job['title'] = job.get('job_title', '')
+        job['description'] = job.get('short_description', '')
+        job['requirements'] = job.get('skills_keywords', [])
+        all_jobs.append(job)
+    
+    # Sort
+    if sort_by == "recent":
+        all_jobs.sort(key=lambda x: x.get('date_posted') or x.get('created_at') or datetime.min, reverse=True)
+    elif sort_by == "company":
+        all_jobs.sort(key=lambda x: x.get('company_name', ''))
+    
+    return all_jobs[skip:skip+limit]
+
+
+@api_router.post("/premium/boost-application")
+async def boost_application(job_id: str, include_cover_letter: bool = False, current_user: User = Depends(get_current_user)):
+    """Boost My Application - Tailor resume"""
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers can use this")
+    
+    credits_needed = 25 if include_cover_letter else 15
+    if current_user.ai_credits < credits_needed:
+        raise HTTPException(status_code=403, detail=f"Need {credits_needed} credits")
+    
+    resume = await db.resumes.find_one({"user_id": current_user.id}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Upload resume first")
+    
+    # Check cache
+    cache_key = f"{current_user.id}_{job_id}_{'cover' if include_cover_letter else 'basic'}"
+    cached = await db.boost_cache.find_one({"cache_key": cache_key})
+    if cached:
+        return cached['result']
+    
+    # Get job
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        job = await db.aggregated_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    try:
+        ai_service = get_ai_service()
+        result = await ai_service.tailor_resume(resume, job, include_cover_letter)
+        result['disclaimer'] = "AI-generated. Please review before using."
+        
+        # Cache
+        await db.boost_cache.insert_one({
+            "cache_key": cache_key,
+            "user_id": current_user.id,
+            "job_id": job_id,
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Deduct credits
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -credits_needed}})
+        
+        return result
+    except Exception as e:
+        logging.error(f"Boost error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Boost failed")
+
+
+@api_router.post("/premium/message-recruiter")
+async def message_recruiter(job_id: str, tone: str = "professional", current_user: User = Depends(get_current_user)):
+    """Generate recruiter messages"""
+    if current_user.role != UserRole.JOB_SEEKER:
+        raise HTTPException(status_code=403, detail="Only job seekers")
+    
+    if current_user.ai_credits < 5:
+        raise HTTPException(status_code=403, detail="Need 5 credits")
+    
+    if tone not in ['professional', 'friendly', 'confident']:
+        raise HTTPException(status_code=400, detail="Invalid tone")
+    
+    resume = await db.resumes.find_one({"user_id": current_user.id}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Upload resume first")
+    
+    # Check cache
+    cache_key = f"{current_user.id}_{job_id}_{tone}"
+    cached = await db.message_cache.find_one({"cache_key": cache_key})
+    if cached:
+        return cached['result']
+    
+    # Get job
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        job = await db.aggregated_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    try:
+        ai_service = get_ai_service()
+        result = await ai_service.generate_recruiter_message(resume, job, tone)
+        
+        # Cache
+        await db.message_cache.insert_one({
+            "cache_key": cache_key,
+            "user_id": current_user.id,
+            "job_id": job_id,
+            "tone": tone,
+            "result": result,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        # Deduct credits
+        await db.users.update_one({"id": current_user.id}, {"$inc": {"ai_credits": -5}})
+        
+        return result
+    except Exception as e:
+        logging.error(f"Message error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Message generation failed")
+
+
+@api_router.post("/tracking/external-apply")
+async def track_external_apply(job_id: str, source: str, current_user: User = Depends(get_current_user)):
+    """Track external application clicks"""
+    try:
+        await db.external_applications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.id,
+            "job_id": job_id,
+            "source": source,
+            "clicked_at": datetime.now(timezone.utc).isoformat()
+        })
+        return {"message": "Tracked"}
+    except:
+        return {"message": "OK"}
+
+
+@api_router.get("/admin/analytics/extended")
+async def get_extended_analytics(current_admin: User = Depends(get_current_admin)):
+    """Extended analytics"""
+    base = await get_admin_analytics(current_admin)
+    
+    total_aggregated = await db.aggregated_jobs.count_documents({"is_external": True})
+    aggregated_by_source = await db.aggregated_jobs.aggregate([
+        {"$match": {"is_external": True}},
+        {"$group": {"_id": "$source", "count": {"$sum": 1}}}
+    ]).to_list(10)
+    
+    external_clicks = await db.external_applications.count_documents({})
+    boost_usage = await db.boost_cache.count_documents({})
+    message_usage = await db.message_cache.count_documents({})
+    
+    extended = {
+        **base,
+        "aggregated_jobs": {
+            "total": total_aggregated,
+            "by_source": {item['_id']: item['count'] for item in aggregated_by_source}
+        },
+        "external_applications": {"total_clicks": external_clicks},
+        "premium_features": {
+            "boost_applications": boost_usage,
+            "recruiter_messages": message_usage
+        }
+    }
+    
+    return extended
+
+
 # Include router
 app.include_router(api_router)
 
