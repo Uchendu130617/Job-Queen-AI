@@ -30,14 +30,14 @@ except Exception as e:
     raise
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = CONFIG['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[CONFIG['DB_NAME']]
 
-JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key')
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
-AI_PROVIDER = os.environ.get('AI_PROVIDER', 'openai')
-AI_MODEL = os.environ.get('AI_MODEL', 'gpt-5.2')
+JWT_SECRET = CONFIG['JWT_SECRET']
+EMERGENT_LLM_KEY = CONFIG['EMERGENT_LLM_KEY']
+AI_PROVIDER = CONFIG['AI_PROVIDER']
+AI_MODEL = CONFIG['AI_MODEL']
 
 # Create the main app
 app = FastAPI()
