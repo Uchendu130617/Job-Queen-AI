@@ -15,6 +15,7 @@ import jwt
 from ai_service import AIService, AIProvider
 from file_utils import extract_text_from_file
 from config import validate_environment, get_config, log_startup_info
+from job_aggregation import JobAggregationService, run_aggregation_job
 import json
 
 
