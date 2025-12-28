@@ -167,7 +167,7 @@ const LandingPage = () => {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
-            <Card data-testid="feature-card-resume" className="border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
+            <Card data-testid="feature-card-resume" className="bg-white border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
               <CardHeader>
                 <FileText className="h-10 w-10 text-[#2563EB] mb-4" />
                 <CardTitle className="text-xl">AI Resume Parsing</CardTitle>
@@ -175,7 +175,7 @@ const LandingPage = () => {
               </CardHeader>
             </Card>
             
-            <Card data-testid="feature-card-matching" className="border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
+            <Card data-testid="feature-card-matching" className="bg-white border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
               <CardHeader>
                 <Zap className="h-10 w-10 text-[#2563EB] mb-4" />
                 <CardTitle className="text-xl">Smart Job Matching</CardTitle>
@@ -183,7 +183,7 @@ const LandingPage = () => {
               </CardHeader>
             </Card>
             
-            <Card data-testid="feature-card-screening" className="border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
+            <Card data-testid="feature-card-screening" className="bg-white border-[#E2E8F0] hover:border-[#3B82F6] transition-all duration-200">
               <CardHeader>
                 <Users className="h-10 w-10 text-[#2563EB] mb-4" />
                 <CardTitle className="text-xl">Automated Screening</CardTitle>
