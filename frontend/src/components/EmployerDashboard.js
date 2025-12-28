@@ -188,7 +188,14 @@ export const EmployerDashboard = () => {
                           <CardTitle className="text-xl">{job.title}</CardTitle>
                           <CardDescription className="mt-2">{job.location} • {job.job_type}</CardDescription>
                         </div>
-                        <Badge className={job.status === 'active' ? 'bg-[#10B981]' : 'bg-[#64748B]'}>{job.status}</Badge>
+                        <Badge className={
+                          job.status === 'active' ? 'bg-[#10B981] text-white' : 
+                          job.status === 'pending' ? 'bg-[#F59E0B] text-white' :
+                          job.status === 'rejected' ? 'bg-[#EF4444] text-white' :
+                          'bg-[#64748B] text-white'
+                        }>
+                          {job.status}
+                        </Badge>
                       </div>
                       <div className="mt-4 flex items-center gap-4 text-sm text-[#64748B]">
                         <span className="flex items-center gap-1">
