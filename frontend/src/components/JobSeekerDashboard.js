@@ -440,31 +440,106 @@ export const JobSeekerDashboard = () => {
       </div>
 
       {/* Resume Upload Dialog */}
-      <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+      <Dialog open={showResumeDialog} onOpenChange={(open) => {
+        setShowResumeDialog(open);
+        if (!open) {
+          setResumeFile(null);
+          setResumeText("");
+          setParsedResume(null);
+        }
+      }}>
         <DialogContent data-testid="resume-dialog" className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'Manrope, sans-serif' }}>Upload Your Resume</DialogTitle>
-            <DialogDescription>Paste your resume text below. Our AI will extract your skills and experience.</DialogDescription>
+            <DialogDescription>Upload a PDF/DOCX file or paste your resume text. AI will extract your skills and experience.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <Textarea
-              data-testid="resume-textarea"
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Paste your resume text here..."
-              rows={12}
-              className="font-mono text-sm"
-            />
-            <Button
-              data-testid="parse-resume-btn"
-              onClick={handleParseResume}
-              disabled={isParsingResume || !resumeText}
-              className="w-full btn-ai"
-            >
-              {isParsingResume ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-              {isParsingResume ? "Parsing..." : "Parse with AI"}
-            </Button>
-          </div>
+
+          <Tabs value={uploadMethod} onValueChange={setUploadMethod} className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="file">Upload File</TabsTrigger>
+              <TabsTrigger value="text">Paste Text</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="file" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Select Resume File</Label>
+                <Input
+                  data-testid="resume-file-input"
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  onChange={(e) => setResumeFile(e.target.files[0])}
+                  disabled={isParsingResume}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-[#64748B]">Supported formats: PDF, DOCX, TXT (Max 5MB)</p>
+              </div>
+
+              {resumeFile && (
+                <div className="p-3 bg-[#F1F5F9] rounded-md">
+                  <p className="text-sm font-medium">{resumeFile.name}</p>
+                  <p className="text-xs text-[#64748B]">{(resumeFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+              )}
+
+              <Button
+                data-testid="upload-resume-btn"
+                onClick={handleFileUpload}
+                disabled={isParsingResume || !resumeFile}
+                className="w-full btn-ai"
+              >
+                {isParsingResume ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {isParsingResume ? "Uploading & Parsing..." : "Upload & Parse with AI"}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="text" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Resume Text</Label>
+                <Textarea
+                  data-testid="resume-textarea"
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                  placeholder="Paste your resume text here (minimum 100 characters)..."
+                  rows={12}
+                  disabled={isParsingResume}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-[#64748B]">
+                  {resumeText.length} characters
+                  {resumeText.length < 100 && ` (${100 - resumeText.length} more needed)`}
+                </p>
+              </div>
+
+              <Button
+                data-testid="parse-resume-btn"
+                onClick={handleTextParse}
+                disabled={isParsingResume || !resumeText || resumeText.trim().length < 100}
+                className="w-full btn-ai"
+              >
+                {isParsingResume ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {isParsingResume ? "Parsing..." : "Parse with AI"}
+              </Button>
+            </TabsContent>
+          </Tabs>
+
+          {parsedResume && (
+            <Card className="bg-[#F1F5F9] border-[#E2E8F0] mt-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Parsed Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>
+                  <strong>Skills:</strong> {parsedResume.skills?.join(", ") || "None detected"}
+                </div>
+                <div>
+                  <strong>Experience:</strong> {parsedResume.experience_years || 0} years
+                </div>
+                <div>
+                  <strong>Education:</strong> {parsedResume.education || "Not specified"}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </DialogContent>
       </Dialog>
 
