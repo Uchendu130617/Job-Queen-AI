@@ -16,6 +16,7 @@ import { Briefcase, Users, Zap, TrendingUp, Search, Plus, FileText, BarChart, Se
 import EmployerDashboard from "@/components/EmployerDashboard";
 import JobSeekerDashboard from "@/components/JobSeekerDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
+import JobsPage from "@/components/JobsPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
