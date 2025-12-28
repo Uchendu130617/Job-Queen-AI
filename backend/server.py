@@ -211,6 +211,53 @@ def get_ai_service() -> AIService:
     return AIService(EMERGENT_LLM_KEY, AI_PROVIDER, AI_MODEL)
 
 
+# ========== HEALTH CHECK & MONITORING ==========
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Check database connection
+        await db.command('ping')
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+    
+    return {
+        "status": "healthy" if db_status == "healthy" else "degraded",
+        "database": db_status,
+        "version": "1.0.0",
+        "environment": CONFIG['DB_NAME']
+    }
+
+
+@app.get("/api/health/detailed")
+async def detailed_health_check(current_admin: User = Depends(get_current_admin)):
+    """Detailed health check (admin only)"""
+    checks = {}
+    
+    # Database
+    try:
+        await db.command('ping')
+        user_count = await db.users.count_documents({})
+        checks['database'] = {"status": "healthy", "users": user_count}
+    except Exception as e:
+        checks['database'] = {"status": "unhealthy", "error": str(e)}
+    
+    # AI Service
+    try:
+        ai_service = get_ai_service()
+        checks['ai_service'] = {
+            "status": "configured",
+            "provider": AI_PROVIDER,
+            "model": AI_MODEL
+        }
+    except Exception as e:
+        checks['ai_service'] = {"status": "error", "error": str(e)}
+    
+    return checks
+
+
 # ========== AUTH ROUTES ==========
 
 @api_router.post("/auth/register", response_model=TokenResponse)
