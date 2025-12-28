@@ -269,7 +269,7 @@ export const JobSeekerDashboard = () => {
             </CardHeader>
           </Card>
 
-          <Card className="border-[#E2E8F0] hover:border-[#3B82F6] transition-colors">
+          <Card className="border-[#E2E8F0] hover:border-[#3B82F6] transition-colors cursor-pointer" onClick={() => navigate('/jobs')}>
             <CardHeader>
               <Search className="h-10 w-10 text-[#10B981] mb-2" />
               <CardTitle className="text-lg">Browse Jobs</CardTitle>
