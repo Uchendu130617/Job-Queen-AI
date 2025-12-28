@@ -1306,6 +1306,13 @@ async def create_admin_user():
     await db.resumes.create_index("user_id", unique=True)
     logger.info("✓ Database indexes created")
     
+    # Trigger initial job aggregation
+    try:
+        result = await run_aggregation_job(db)
+        logger.info(f"✓ Initial job aggregation: {result['total_inserted']} jobs inserted")
+    except Exception as e:
+        logger.warning(f"⚠ Initial aggregation skipped: {str(e)}")
+    
     logger.info("=" * 60)
     logger.info("🚀 JobQuick AI is ready!")
     logger.info("=" * 60)
