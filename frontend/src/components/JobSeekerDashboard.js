@@ -182,12 +182,6 @@ export const JobSeekerDashboard = () => {
       setIsMatchingJobs(false);
     }
   };
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to match jobs");
-    } finally {
-      setIsMatchingJobs(false);
-    }
-  };
 
   const handleApply = async (jobId, coverLetter) => {
     try {
