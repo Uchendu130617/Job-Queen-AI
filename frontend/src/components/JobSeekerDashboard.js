@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Briefcase, Search, LogOut, Sparkles, FileText, Loader2, MapPin, DollarSign, Briefcase as BriefcaseIcon } from "lucide-react";
+import { Briefcase, Search, LogOut, Sparkles, FileText, Loader2, MapPin, DollarSign, Briefcase as BriefcaseIcon, Wand2, Mail } from "lucide-react";
 import { useAuth } from "../App";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
