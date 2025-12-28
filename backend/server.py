@@ -280,16 +280,22 @@ async def detailed_health_check(current_admin: User = Depends(get_current_admin)
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate):
+    if not CONFIG['ENABLE_SIGNUP']:
+        raise HTTPException(status_code=403, detail="Signups are currently disabled")
+    
     existing_user = await db.users.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Validate password strength
+    validate_password_strength(user_data.password)
+    
     user_dict = user_data.model_dump(exclude={'password'})
     user_obj = User(**user_dict)
     
-    # Jobs require approval by default
+    # Jobs require approval by default (unless auto-approve is enabled)
     if user_obj.role == UserRole.EMPLOYER:
-        user_obj.is_approved = False
+        user_obj.is_approved = CONFIG['AUTO_APPROVE_EMPLOYERS']
     
     doc = user_obj.model_dump()
     doc['password_hash'] = hash_password(user_data.password)
