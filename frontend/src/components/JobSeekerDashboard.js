@@ -695,4 +695,477 @@ const ApplyForm = ({ jobId, onSubmit }) => {
   );
 };
 
+// Tailor CV Dialog Component
+const TailorCVDialog = ({ open, onClose, user, token, fetchUser }) => {
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [externalJobText, setExternalJobText] = useState("");
+  const [includeCoverLetter, setIncludeCoverLetter] = useState(false);
+  const [isTailoring, setIsTailoring] = useState(false);
+  const [tailoredResult, setTailoredResult] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+  useEffect(() => {
+    if (open) {
+      fetchAvailableJobs();
+    }
+  }, [open]);
+
+  const fetchAvailableJobs = async () => {
+    try {
+      const response = await axios.get(`${API}/jobs/all?limit=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+    }
+  };
+
+  const handleTailor = async () => {
+    if (!selectedJobId && !externalJobText) {
+      toast.error("Please select a job or paste job description");
+      return;
+    }
+
+    const creditsNeeded = includeCoverLetter ? 25 : 15;
+    if (user.ai_credits < creditsNeeded) {
+      toast.error(`Need ${creditsNeeded} credits. You have ${user.ai_credits}.`);
+      return;
+    }
+
+    setIsTailoring(true);
+    try {
+      const response = await axios.post(
+        `${API}/premium/boost-application`,
+        null,
+        {
+          params: {
+            job_id: selectedJobId,
+            include_cover_letter: includeCoverLetter
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      setTailoredResult(response.data);
+      toast.success("CV tailored successfully!");
+      fetchUser();
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || "Failed to tailor CV";
+      toast.error(errorMsg);
+    } finally {
+      setIsTailoring(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Wand2 className="h-6 w-6 text-[#8B5CF6]" />
+            Tailor My CV for a Job
+          </DialogTitle>
+          <DialogDescription>
+            AI will optimize your resume to match the job requirements. {includeCoverLetter ? "25 credits" : "15 credits"}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!tailoredResult ? (
+          <div className="space-y-6 mt-4">
+            <div className="space-y-2">
+              <Label>Select Job</Label>
+              <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a job to tailor for..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.title || job.job_title} - {job.company_name}
+                      {job.is_external && ` (${job.source})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="include-cover-letter"
+                checked={includeCoverLetter}
+                onChange={(e) => setIncludeCoverLetter(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="include-cover-letter">
+                Include cover letter (+10 credits)
+              </Label>
+            </div>
+
+            <div className="p-4 bg-[#FFF9E6] border border-[#F59E0B] rounded-md">
+              <p className="text-sm text-[#92400E]">
+                <strong>Disclaimer:</strong> This is AI-generated content based on your existing resume. 
+                We do not fabricate experience. Please review and edit before using.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleTailor}
+              disabled={isTailoring || (!selectedJobId && !externalJobText)}
+              className="w-full bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+            >
+              {isTailoring ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Tailoring...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Tailor My CV ({includeCoverLetter ? 25 : 15} Credits)
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6 mt-4">
+            <Card className="bg-[#F1F5F9]">
+              <CardHeader>
+                <CardTitle className="text-lg">Tailored Professional Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={tailoredResult.tailored_summary}
+                  onChange={(e) => setTailoredResult({...tailoredResult, tailored_summary: e.target.value})}
+                  rows={4}
+                  className="font-sans"
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#F1F5F9]">
+              <CardHeader>
+                <CardTitle className="text-lg">Experience Bullets</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {tailoredResult.experience_bullets?.map((bullet, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span>•</span>
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#F1F5F9]">
+              <CardHeader>
+                <CardTitle className="text-lg">Optimized Skills</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {tailoredResult.optimized_skills?.map((skill, idx) => (
+                    <Badge key={idx} variant="outline">{skill}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {tailoredResult.cover_letter && (
+              <Card className="bg-[#F1F5F9]">
+                <CardHeader>
+                  <CardTitle className="text-lg">Tailored Cover Letter</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={tailoredResult.cover_letter}
+                    onChange={(e) => setTailoredResult({...tailoredResult, cover_letter: e.target.value})}
+                    rows={8}
+                    className="font-sans"
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {tailoredResult.estimated_match_improvement && (
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                <CardHeader>
+                  <CardTitle className="text-lg text-green-800">
+                    Estimated Match Improvement: +{tailoredResult.estimated_match_improvement}%
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            )}
+
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => {
+                  setTailoredResult(null);
+                  setSelectedJobId("");
+                  setIncludeCoverLetter(false);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Tailor Another
+              </Button>
+              <Button 
+                onClick={() => {
+                  // In production, this would trigger download
+                  toast.success("Download feature coming soon!");
+                }}
+                className="flex-1 bg-[#0F172A]"
+              >
+                Download as PDF
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Message Recruiter Dialog Component
+const MessageRecruiterDialog = ({ open, onClose, user, token, fetchUser }) => {
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [tone, setTone] = useState("professional");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [messages, setMessages] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+  useEffect(() => {
+    if (open) {
+      fetchAvailableJobs();
+    }
+  }, [open]);
+
+  const fetchAvailableJobs = async () => {
+    try {
+      const response = await axios.get(`${API}/jobs/all?limit=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedJobId) {
+      toast.error("Please select a job");
+      return;
+    }
+
+    if (user.ai_credits < 5) {
+      toast.error(`Need 5 credits. You have ${user.ai_credits}.`);
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await axios.post(
+        `${API}/premium/message-recruiter`,
+        null,
+        {
+          params: {
+            job_id: selectedJobId,
+            tone: tone
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      setMessages(response.data);
+      toast.success("Messages generated successfully!");
+      fetchUser();
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || "Failed to generate messages";
+      toast.error(errorMsg);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl flex items-center gap-2">
+            <Mail className="h-6 w-6 text-[#3B82F6]" />
+            Message Recruiter (AI)
+          </DialogTitle>
+          <DialogDescription>
+            Generate personalized outreach messages. 5 credits
+          </DialogDescription>
+        </DialogHeader>
+
+        {!messages ? (
+          <div className="space-y-6 mt-4">
+            <div className="space-y-2">
+              <Label>Select Job</Label>
+              <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a job..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.title || job.job_title} - {job.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Message Tone</Label>
+              <Select value={tone} onValueChange={setTone}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                  <SelectItem value="confident">Confident</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !selectedJobId}
+              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Generate Messages (5 Credits)
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <Tabs defaultValue="linkedin" className="mt-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="linkedin">LinkedIn DM</TabsTrigger>
+              <TabsTrigger value="email">Email</TabsTrigger>
+              <TabsTrigger value="followup">Follow-up</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="linkedin" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">LinkedIn Direct Message</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={messages.linkedin_dm}
+                    readOnly
+                    rows={6}
+                    className="font-sans"
+                  />
+                  <Button
+                    onClick={() => copyToClipboard(messages.linkedin_dm)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="email" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Email Subject</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Input
+                    value={messages.email_subject}
+                    readOnly
+                    className="font-sans font-semibold"
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Email Body</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={messages.email_body}
+                    readOnly
+                    rows={10}
+                    className="font-sans"
+                  />
+                  <Button
+                    onClick={() => copyToClipboard(`Subject: ${messages.email_subject}\n\n${messages.email_body}`)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Copy Email
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="followup" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Follow-up Message</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea
+                    value={messages.follow_up}
+                    readOnly
+                    rows={4}
+                    className="font-sans"
+                  />
+                  <Button
+                    onClick={() => copyToClipboard(messages.follow_up)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <div className="mt-6">
+              <Button
+                onClick={() => {
+                  setMessages(null);
+                  setSelectedJobId("");
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Generate Another Message
+              </Button>
+            </div>
+          </Tabs>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export default JobSeekerDashboard;
