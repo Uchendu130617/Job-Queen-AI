@@ -203,7 +203,7 @@ const LandingPage = () => {
           </div>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card data-testid="pricing-card-free" className="border-[#E2E8F0]">
+            <Card data-testid="pricing-card-free" className="bg-white border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-2xl">Free</CardTitle>
                 <div className="mt-4">
@@ -220,7 +220,7 @@ const LandingPage = () => {
               </CardContent>
             </Card>
             
-            <Card data-testid="pricing-card-professional" className="border-[#2563EB] shadow-lg relative">
+            <Card data-testid="pricing-card-professional" className="bg-white border-[#2563EB] shadow-lg relative">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <Badge className="bg-[#2563EB] text-white">Popular</Badge>
               </div>
@@ -241,7 +241,7 @@ const LandingPage = () => {
               </CardContent>
             </Card>
             
-            <Card data-testid="pricing-card-enterprise" className="border-[#E2E8F0]">
+            <Card data-testid="pricing-card-enterprise" className="bg-white border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-2xl">Enterprise</CardTitle>
                 <div className="mt-4">
