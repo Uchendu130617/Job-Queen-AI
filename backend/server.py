@@ -382,17 +382,32 @@ async def upload_resume(
         raise HTTPException(status_code=403, detail="No AI credits remaining")
     
     # Validate file type
-    allowed_extensions = ['.pdf', '.docx', '.txt']
     file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="File must be PDF, DOCX, or TXT")
+    if file_ext not in CONFIG['ALLOWED_EXTENSIONS']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File must be one of: {', '.join(CONFIG['ALLOWED_EXTENSIONS'])}"
+        )
     
     try:
-        # Read file
+        # Read file with size limit
         file_bytes = await file.read()
+        max_size = CONFIG['MAX_UPLOAD_SIZE_MB'] * 1024 * 1024
+        
+        if len(file_bytes) > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large. Maximum size: {CONFIG['MAX_UPLOAD_SIZE_MB']}MB"
+            )
         
         # Extract text
         resume_text = extract_text_from_file(file_bytes, file.filename)
+        
+        if not resume_text or len(resume_text.strip()) < 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Resume appears to be empty or too short. Please upload a complete resume."
+            )
         
         # Parse with AI
         ai_service = get_ai_service()
