@@ -64,10 +64,12 @@ export const AdminDashboard = () => {
       await axios.put(`${API}/admin/users/${userId}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("User approved");
+      toast.success("User approved successfully");
       fetchUsers();
     } catch (error) {
-      toast.error("Failed to approve user");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to approve user";
+      console.error("Approve user error:", error.response?.data);
+      toast.error(errorMsg);
     }
   };
 
@@ -76,10 +78,12 @@ export const AdminDashboard = () => {
       await axios.put(`${API}/admin/users/${userId}/suspend`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("User suspended");
+      toast.success("User suspended successfully");
       fetchUsers();
     } catch (error) {
-      toast.error("Failed to suspend user");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to suspend user";
+      console.error("Suspend user error:", error.response?.data);
+      toast.error(errorMsg);
     }
   };
 
@@ -88,11 +92,13 @@ export const AdminDashboard = () => {
       await axios.put(`${API}/admin/jobs/${jobId}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Job approved");
+      toast.success("Job approved successfully");
       fetchPendingJobs();
       setShowJobDialog(false);
     } catch (error) {
-      toast.error("Failed to approve job");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to approve job";
+      console.error("Approve job error:", error.response?.data);
+      toast.error(errorMsg);
     }
   };
 
@@ -105,11 +111,13 @@ export const AdminDashboard = () => {
         params: { reason },
         headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Job rejected");
+      toast.success("Job rejected successfully");
       fetchPendingJobs();
       setShowJobDialog(false);
     } catch (error) {
-      toast.error("Failed to reject job");
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to reject job";
+      console.error("Reject job error:", error.response?.data);
+      toast.error(errorMsg);
     }
   };
 
