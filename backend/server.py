@@ -161,6 +161,24 @@ class ScreeningResult(BaseModel):
 
 # ========== AUTH UTILITIES ==========
 
+def validate_password_strength(password: str) -> bool:
+    """Validate password meets minimum security requirements"""
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
+    has_upper = any(c.isupper() for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    
+    if not (has_upper and has_lower and has_digit):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain uppercase, lowercase, and numbers"
+        )
+    
+    return True
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
