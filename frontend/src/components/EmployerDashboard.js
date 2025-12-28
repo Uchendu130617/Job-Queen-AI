@@ -174,6 +174,16 @@ export const EmployerDashboard = () => {
               </Button>
             </div>
 
+            {jobs.some(j => j.status === 'pending') && (
+              <Card className="border-[#F59E0B] bg-[#FFFBEB]">
+                <CardHeader className="pb-3">
+                  <p className="text-sm text-[#92400E]">
+                    ⏳ Some jobs are pending admin approval. They will become visible to candidates once approved.
+                  </p>
+                </CardHeader>
+              </Card>
+            )}
+
             <div data-testid="jobs-list" className="grid gap-4">
               {jobs.length === 0 ? (
                 <Card className="border-[#E2E8F0] p-12 text-center">
