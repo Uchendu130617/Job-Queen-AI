@@ -27,6 +27,8 @@ export const JobSeekerDashboard = () => {
   const [parsedResume, setParsedResume] = useState(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showJobDialog, setShowJobDialog] = useState(false);
+  const [showTailorDialog, setShowTailorDialog] = useState(false);
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isParsingResume, setIsParsingResume] = useState(false);
   const [isMatchingJobs, setIsMatchingJobs] = useState(false);
