@@ -86,7 +86,13 @@ const LandingPage = () => {
 
   useEffect(() => {
     if (user) {
-      navigate(user.role === "employer" ? "/employer/dashboard" : "/jobseeker/dashboard");
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else if (user.role === "employer") {
+        navigate("/employer/dashboard");
+      } else {
+        navigate("/jobseeker/dashboard");
+      }
     }
   }, [user]);
 
