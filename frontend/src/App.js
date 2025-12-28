@@ -15,6 +15,7 @@ import { toast, Toaster } from "sonner";
 import { Briefcase, Users, Zap, TrendingUp, Search, Plus, FileText, BarChart, Settings, LogOut, Sparkles, CheckCircle, ArrowRight, Menu, X } from "lucide-react";
 import EmployerDashboard from "@/components/EmployerDashboard";
 import JobSeekerDashboard from "@/components/JobSeekerDashboard";
+import AdminDashboard from "@/components/AdminDashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
