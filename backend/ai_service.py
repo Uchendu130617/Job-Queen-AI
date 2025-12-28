@@ -265,3 +265,159 @@ Provide as JSON:
         except Exception as e:
             logger.error(f"Interview prep error: {str(e)}")
             raise
+
+    async def tailor_resume(self, resume_data: Dict[str, Any], job_data: Dict[str, Any], include_cover_letter: bool = False) -> Dict[str, Any]:
+        """Tailor resume for specific job (Boost My Application feature)"""
+        try:
+            chat = await self._create_chat(
+                f"tailor_{uuid.uuid4()}",
+                "You are an expert career coach. Tailor resumes to match job requirements WITHOUT fabricating experience."
+            )
+            
+            prompt = f"""Tailor this resume for the job:
+
+Job Title: {job_data.get('title', job_data.get('job_title', ''))}
+Company: {job_data.get('company_name', '')}
+Requirements: {', '.join(job_data.get('requirements', job_data.get('skills_keywords', [])))}
+Description: {job_data.get('description', job_data.get('short_description', ''))[:300]}
+
+Current Resume:
+Skills: {', '.join(resume_data.get('parsed_skills', []))}
+Experience: {resume_data.get('experience_years', 0)} years
+Education: {resume_data.get('education', '')}
+Summary: {resume_data.get('summary', '')}
+
+RULES:
+1. DO NOT fabricate experience or skills
+2. Reframe existing content to highlight relevant experience
+3. Use keywords from job description
+4. Keep it professional and honest
+
+Provide as JSON:
+{{
+  "tailored_summary": "Professional summary highlighting relevant experience",
+  "experience_bullets": ["Reframed achievement 1", "Reframed achievement 2"],
+  "optimized_skills": ["skill1", "skill2"],
+  "estimated_match_improvement": 15
+}}"""
+            
+            message = UserMessage(text=prompt)
+            response = await chat.send_message(message)
+            
+            # Clean response
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.endswith("```"):
+                response = response[:-3]
+            
+            tailored = json.loads(response.strip())
+            
+            # Add cover letter if requested
+            if include_cover_letter:
+                cover_letter = await self._generate_cover_letter(resume_data, job_data)
+                tailored['cover_letter'] = cover_letter
+            
+            return tailored
+        
+        except Exception as e:
+            logger.error(f"Resume tailoring error: {str(e)}")
+            raise
+    
+    async def _generate_cover_letter(self, resume_data: Dict[str, Any], job_data: Dict[str, Any]) -> str:
+        """Generate tailored cover letter"""
+        try:
+            chat = await self._create_chat(
+                f"cover_{uuid.uuid4()}",
+                "You are an expert career coach. Write compelling cover letters."
+            )
+            
+            prompt = f"""Write a professional cover letter for:
+
+Job: {job_data.get('title', job_data.get('job_title', ''))}
+Company: {job_data.get('company_name', '')}
+
+Candidate Profile:
+Skills: {', '.join(resume_data.get('parsed_skills', [])[:5])}
+Experience: {resume_data.get('experience_years', 0)} years
+Summary: {resume_data.get('summary', '')}
+
+Keep it:
+- 3 paragraphs max
+- Professional but personable
+- Highlight 2-3 key qualifications
+- Express genuine interest
+
+Return only the cover letter text, no JSON.
+"""
+            
+            message = UserMessage(text=prompt)
+            response = await chat.send_message(message)
+            
+            return response.strip()
+        
+        except Exception as e:
+            logger.error(f"Cover letter error: {str(e)}")
+            return "Error generating cover letter"
+    
+    async def generate_recruiter_message(
+        self,
+        resume_data: Dict[str, Any],
+        job_data: Dict[str, Any],
+        tone: str = "professional"
+    ) -> Dict[str, Any]:
+        """Generate recruiter outreach messages (Message Recruiter feature)"""
+        try:
+            tone_guidance = {
+                "professional": "formal, respectful, highlighting qualifications",
+                "friendly": "warm, approachable, showing personality",
+                "confident": "assertive, achievement-focused, direct"
+            }
+            
+            chat = await self._create_chat(
+                f"message_{uuid.uuid4()}",
+                f"You are an expert career coach. Write {tone} outreach messages to recruiters."
+            )
+            
+            prompt = f"""Generate 3 recruiter outreach messages ({tone} tone):
+
+Job: {job_data.get('title', job_data.get('job_title', ''))}
+Company: {job_data.get('company_name', '')}
+
+Candidate:
+Skills: {', '.join(resume_data.get('parsed_skills', [])[:5])}
+Experience: {resume_data.get('experience_years', 0)} years
+
+Generate:
+1. LinkedIn DM (150 chars max)
+2. Email subject + body (concise, 200 words max)
+3. Follow-up message (100 chars max)
+
+Tone: {tone_guidance.get(tone, 'professional')}
+
+Respond as JSON:
+{{
+  "linkedin_dm": "...",
+  "email_subject": "...",
+  "email_body": "...",
+  "follow_up": "..."
+}}
+"""
+            
+            message = UserMessage(text=prompt)
+            response = await chat.send_message(message)
+            
+            # Clean response
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.endswith("```"):
+                response = response[:-3]
+            
+            messages = json.loads(response.strip())
+            
+            return messages
+        
+        except Exception as e:
+            logger.error(f"Recruiter message error: {str(e)}")
+            raise
