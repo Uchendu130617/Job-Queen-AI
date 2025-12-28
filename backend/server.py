@@ -1050,8 +1050,11 @@ async def shutdown_db_client():
 # Create admin user on startup
 @app.on_event("startup")
 async def create_admin_user():
-    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@jobquick.ai')
-    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    # Log startup info
+    log_startup_info()
+    
+    admin_email = CONFIG['ADMIN_EMAIL']
+    admin_password = CONFIG['ADMIN_PASSWORD']
     
     existing_admin = await db.users.find_one({"email": admin_email})
     if not existing_admin:
@@ -1070,4 +1073,19 @@ async def create_admin_user():
         doc['created_at'] = doc['created_at'].isoformat()
         
         await db.users.insert_one(doc)
-        logger.info(f"Admin user created: {admin_email}")
+        logger.info(f"✓ Admin user created: {admin_email}")
+    else:
+        logger.info(f"✓ Admin user exists: {admin_email}")
+    
+    # Create indexes for performance
+    await db.users.create_index("email", unique=True)
+    await db.jobs.create_index([("status", 1), ("created_at", -1)])
+    await db.jobs.create_index([("is_featured", -1), ("created_at", -1)])
+    await db.applications.create_index([("candidate_id", 1), ("created_at", -1)])
+    await db.applications.create_index([("job_id", 1), ("created_at", -1)])
+    await db.resumes.create_index("user_id", unique=True)
+    logger.info("✓ Database indexes created")
+    
+    logger.info("=" * 60)
+    logger.info("🚀 JobQuick AI is ready!")
+    logger.info("=" * 60)
