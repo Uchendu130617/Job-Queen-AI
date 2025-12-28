@@ -22,6 +22,9 @@ export const JobSeekerDashboard = () => {
   const [matchedJobs, setMatchedJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [resumeText, setResumeText] = useState("");
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploadMethod, setUploadMethod] = useState("file"); // "file" or "text"
+  const [parsedResume, setParsedResume] = useState(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showJobDialog, setShowJobDialog] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
