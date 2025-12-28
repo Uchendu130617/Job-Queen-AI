@@ -13,13 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Briefcase, Users, Zap, TrendingUp, Search, Plus, FileText, BarChart, Settings, LogOut, Sparkles, CheckCircle, ArrowRight, Menu, X } from "lucide-react";
+import EmployerDashboard from "@/components/EmployerDashboard";
+import JobSeekerDashboard from "@/components/JobSeekerDashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const AuthContext = createContext(null);
 
-const useAuth = () => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within AuthProvider");
