@@ -161,6 +161,11 @@ export const JobSeekerDashboard = () => {
       return;
     }
 
+    // Check if we already have matched jobs (cache to prevent duplicate API calls)
+    if (matchedJobs.length > 0 && !window.confirm("You already have matched jobs. Re-match to update results? This will use 1 AI credit.")) {
+      return;
+    }
+
     setIsMatchingJobs(true);
     try {
       const response = await axios.get(`${API}/ai/match-jobs`, {
@@ -169,6 +174,14 @@ export const JobSeekerDashboard = () => {
       setMatchedJobs(response.data);
       toast.success(`Found ${response.data.length} matching jobs!`);
       fetchUser();
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || error.message || "Failed to match jobs";
+      console.error("Match jobs error:", error.response?.data);
+      toast.error(errorMsg);
+    } finally {
+      setIsMatchingJobs(false);
+    }
+  };
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to match jobs");
     } finally {
