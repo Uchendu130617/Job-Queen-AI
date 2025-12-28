@@ -330,7 +330,7 @@ const CreateJobDialog = ({ open, onClose, onSuccess, token }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      toast.success("Job created successfully!");
+      toast.success("Job created! Awaiting admin approval.");
       onClose();
       onSuccess();
       setFormData({
