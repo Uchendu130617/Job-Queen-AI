@@ -1,0 +1,156 @@
+{
+  "brand_identity": {
+    "name": "JobQuick AI",
+    "archetype": "Swiss Architect",
+    "core_values": ["Precision", "Speed", "Human-Centric", "Future-Ready"],
+    "emotional_tone": "Competent, Clear, Efficient, Trustworthy",
+    "visual_style": "High-Contrast, Structured, Data-Dense, Subtle AI Glow"
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Manrope, sans-serif",
+      "weights": ["600", "800"],
+      "usage": "All section headers, hero titles, modal titles. Use tight tracking (-0.02em).",
+      "fallback": "sans-serif"
+    },
+    "body": {
+      "font_family": "IBM Plex Sans, sans-serif",
+      "weights": ["400", "500"],
+      "usage": "All paragraph text, data tables, inputs, labels.",
+      "fallback": "system-ui"
+    },
+    "mono": {
+      "font_family": "JetBrains Mono, monospace",
+      "usage": "Code snippets, API keys, AI confidence scores."
+    },
+    "installation": "Import from Google Fonts: https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;600;800&display=swap"
+  },
+  "colors": {
+    "mode": "light",
+    "palette": {
+      "background": {
+        "default": "#F8F9FA",
+        "paper": "#FFFFFF",
+        "subtle": "#F1F5F9"
+      },
+      "foreground": {
+        "default": "#0F172A",
+        "muted": "#64748B",
+        "inverse": "#FFFFFF"
+      },
+      "primary": {
+        "main": "#0F172A",
+        "hover": "#1E293B",
+        "foreground": "#FFFFFF",
+        "description": "Deep Navy/Slate 900. Used for primary actions, headers, strong borders."
+      },
+      "accent": {
+        "main": "#2563EB",
+        "light": "#EFF6FF",
+        "hover": "#1D4ED8",
+        "description": "Royal Blue. Used for active states, links, focus rings."
+      },
+      "ai_glow": {
+        "start": "#4F46E5",
+        "end": "#8B5CF6",
+        "description": "Indigo to Violet gradient. ONLY used for AI-powered features (matching score, smart insights)."
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "gradients": {
+      "ai_badge": "bg-gradient-to-r from-indigo-500 to-violet-500 text-white",
+      "hero_glow": "bg-gradient-to-tr from-blue-50 to-indigo-50"
+    }
+  },
+  "layout": {
+    "spacing_scale": "Generous. Use p-8, p-12 for sections. p-6 for cards.",
+    "grid_system": {
+      "marketing": "Tetris Grid (Asymmetric). grid-cols-12. Mix col-span-4, col-span-8.",
+      "dashboard": "Control Room Grid. grid-cols-4. Dense. Gap-4."
+    },
+    "containers": {
+      "max_width": "max-w-7xl",
+      "padding": "px-4 sm:px-6 lg:px-8"
+    },
+    "z_index": {
+      "modal": 50,
+      "dropdown": 40,
+      "sticky_nav": 30,
+      "overlay": 20
+    }
+  },
+  "components": {
+    "buttons": {
+      "radius": "rounded-md",
+      "styles": {
+        "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+        "secondary": "bg-white text-primary border border-slate-200 hover:bg-slate-50 hover:border-slate-300",
+        "ghost": "hover:bg-slate-100 text-slate-700",
+        "ai_action": "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:opacity-90 shadow-md shadow-indigo-200"
+      }
+    },
+    "cards": {
+      "style": "Flat, 1px border. No shadow by default. Hover lifts slightly.",
+      "classes": "bg-white border border-slate-200 rounded-lg hover:border-blue-300 transition-colors duration-200"
+    },
+    "inputs": {
+      "style": "Sharp, clean borders. Focus ring is critical.",
+      "classes": "h-10 rounded-md border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+    },
+    "ai_features": {
+      "style": "Glassmorphism + Gradient Border",
+      "classes": "backdrop-blur-md bg-white/80 border border-indigo-100 shadow-sm"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": {
+        "url": "https://images.unsplash.com/photo-1765366417046-f46361a7f26f?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Modern minimalist office workspace",
+        "usage": "Landing page hero background or section divider"
+      },
+      "team_diverse": {
+        "url": "https://images.pexels.com/photos/7202898/pexels-photo-7202898.jpeg",
+        "alt": "Diverse professional team meeting",
+        "usage": "About us or Employer dashboard empty state"
+      },
+      "professional_portrait": {
+        "url": "https://images.pexels.com/photos/7202821/pexels-photo-7202821.jpeg",
+        "alt": "Professional working on laptop",
+        "usage": "Candidate profile example or Testimonial"
+      },
+      "ai_abstract": {
+        "url": "https://images.pexels.com/photos/5011647/pexels-photo-5011647.jpeg",
+        "alt": "Abstract blue geometric technology",
+        "usage": "Background for AI matching section or Login screen sidebar"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px (Thin/Elegant). Size 16px-20px for UI, 24px-32px for Features."
+    }
+  },
+  "motion": {
+    "transitions": "transition-all duration-200 ease-out",
+    "hover_effects": "translate-y-[-2px]",
+    "loading": "Use skeleton loaders (Shadcn) instead of spinners for content."
+  },
+  "universal_guidelines": [
+    "DO NOT use generic gradients. Use solid colors or subtle noise textures.",
+    "DO NOT use 'Inter' for headings. Use 'Manrope'.",
+    "DO NOT center text by default. Left align is stronger for reading.",
+    "Use 2-3x more spacing than typical designs.",
+    "All interactive elements MUST have data-testid attributes.",
+    "Dark colors look good when used independently without gradients.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for AI overlays.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠 etc.",
+    "Prioritize using pre-existing components from src/components/ui."
+  ],
+  "instructions_to_main_agent": "You are building a high-end, Swiss-style recruitment platform. Focus on data density in the dashboard and bold typography in the marketing pages. Use the provided image URLs for placeholders. Implement the 'Manrope' font immediately in the index.css or tailwind config. Use the 'ai_glow' colors sparingly—only for features that actually use AI."
+}
