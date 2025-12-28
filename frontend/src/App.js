@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { toast, Toaster } from "sonner";
 import { Briefcase, Users, Zap, TrendingUp, Search, Plus, FileText, BarChart, Settings, LogOut, Sparkles, CheckCircle, ArrowRight, Menu, X } from "lucide-react";
 import EmployerDashboard from "@/components/EmployerDashboard";
 import JobSeekerDashboard from "@/components/JobSeekerDashboard";
